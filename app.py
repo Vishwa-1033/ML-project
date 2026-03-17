@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 st.title("Disease Risk Predictor")
-st.markdown("Enter patient details below to assess risk for Heart Disease, Liver Disease, and Diabetes.")
+st.markdown("Enter patient details to assess risk for Heart Disease, Liver Disease, and Diabetes.")
 
 @st.cache_data
 def load_doctor_data():
@@ -255,8 +255,8 @@ with st.spinner("Loading and training models..."):
      liver_model,    liver_scaler,
      diabetes_model, diabetes_scaler) = load_and_train()
 
-doctor_df_raw,   hospital_df_raw   = load_doctor_data()
-doctor_df_clean  = normalize_doctor_df(doctor_df_raw)
+doctor_df_raw,    hospital_df_raw   = load_doctor_data()
+doctor_df_clean   = normalize_doctor_df(doctor_df_raw)
 hospital_df_clean = normalize_doctor_df(hospital_df_raw)
 
 st.success("Models ready!")
@@ -267,113 +267,113 @@ DIABETES_THRESHOLD = 0.65
 
 tab1, tab2, tab3 = st.tabs(["Heart Disease", "Liver Disease", "Diabetes"])
 
+# ── Heart Disease Tab ─────────────────────────────────────────────────────────
 with tab1:
     st.subheader("Heart Disease Risk Assessment")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        age      = st.number_input("Age",             min_value=1,   max_value=120, value=50,  key="h_age")
-        trestbps = st.number_input("Resting BP",      min_value=80,  max_value=200, value=120, key="h_bp")
-        fbs      = st.selectbox("Fasting BS > 120",   [0, 1],                        key="h_fbs")
-        exang    = st.selectbox("Exercise Angina",    [0, 1],                        key="h_exang")
-        ca       = st.selectbox("Major Vessels (0-3)",[0, 1, 2, 3],                 key="h_ca")
-    with col2:
-        sex      = st.selectbox("Sex", [0, 1],
-                    format_func=lambda x: "Female" if x==0 else "Male",              key="h_sex")
-        chol     = st.number_input("Cholesterol",     min_value=100, max_value=600, value=200, key="h_chol")
-        restecg  = st.selectbox("Resting ECG",        [0, 1, 2],                    key="h_ecg")
-        oldpeak  = st.number_input("Oldpeak",         min_value=0.0, max_value=10.0,value=1.0,
-                                    step=0.1,                                         key="h_op")
-        thal     = st.selectbox("Thal",               [0, 1, 2, 3],                 key="h_thal")
-    with col3:
-        cp       = st.selectbox("Chest Pain Type",    [0, 1, 2, 3, 4],              key="h_cp")
-        thalach  = st.number_input("Max Heart Rate",  min_value=60,  max_value=250, value=150, key="h_hr")
-        slope    = st.selectbox("Slope",              [0, 1, 2],                    key="h_slope")
+    st.caption("Feature order: age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal")
+    st.caption("Example: 63,1,4,130,254,0,2,147,0,1.4,1,1,3")
 
-    if st.button("Predict Heart Disease Risk", use_container_width=True):
-        values = [age, sex, cp, trestbps, chol, fbs, restecg,
-                  thalach, exang, oldpeak, slope, ca, thal]
-        arr    = np.array(values, dtype=float).reshape(1, -1)
-        prob   = heart_model.predict_proba(heart_scaler.transform(arr))[0][1]
-        result = "Likely" if prob >= HEART_THRESHOLD else "Unlikely"
-        st.divider()
-        if result == "Likely":
-            st.error(f"Heart Disease Risk: {result}")
-            show_doctor_recommendations(
-                ["Heart Disease"], doctor_df_clean, hospital_df_clean)
+    heart_input = st.text_input(
+        "Enter values (comma separated)",
+        placeholder="63,1,4,130,254,0,2,147,0,1.4,1,1,3",
+        key="heart_text"
+    )
+
+    if st.button("Predict Heart Disease Risk", use_container_width=True, key="heart_btn"):
+        if not heart_input.strip():
+            st.warning("Please enter values before predicting.")
         else:
-            st.success(f"Heart Disease Risk: {result}")
-        st.metric("Model Confidence", f"{prob:.0%}")
-        st.progress(float(prob))
+            try:
+                values = [float(x.strip()) for x in heart_input.split(",")]
+                if len(values) != 13:
+                    st.error(f"Expected 13 values but got {len(values)}. Please check your input.")
+                else:
+                    arr    = np.array(values, dtype=float).reshape(1, -1)
+                    prob   = heart_model.predict_proba(heart_scaler.transform(arr))[0][1]
+                    result = "Likely" if prob >= HEART_THRESHOLD else "Unlikely"
+                    st.divider()
+                    if result == "Likely":
+                        st.error(f"Heart Disease Risk: {result}")
+                        show_doctor_recommendations(
+                            ["Heart Disease"], doctor_df_clean, hospital_df_clean)
+                    else:
+                        st.success(f"Heart Disease Risk: {result}")
+                    st.metric("Model Confidence", f"{prob:.0%}")
+                    st.progress(float(prob))
+            except ValueError:
+                st.error("Invalid input. Please enter numbers only, separated by commas.")
 
+# ── Liver Disease Tab ─────────────────────────────────────────────────────────
 with tab2:
     st.subheader("Liver Disease Risk Assessment")
-    col1, col2 = st.columns(2)
-    with col1:
-        l_age    = st.number_input("Age",                       min_value=1,   max_value=120,  value=40,  key="l_age")
-        l_gender = st.selectbox("Gender", [1, 0],
-                    format_func=lambda x: "Male" if x==1 else "Female",                        key="l_gender")
-        l_tb     = st.number_input("Total Bilirubin",           min_value=0.0, max_value=75.0, value=1.0,
-                                    step=0.1,                                                   key="l_tb")
-        l_db     = st.number_input("Direct Bilirubin",          min_value=0.0, max_value=20.0, value=0.3,
-                                    step=0.1,                                                   key="l_db")
-        l_ap     = st.number_input("Alkaline Phosphotase",      min_value=0,   max_value=2000, value=200, key="l_ap")
-    with col2:
-        l_aa     = st.number_input("Alamine Aminotransferase",  min_value=0,   max_value=2000, value=35,  key="l_aa")
-        l_as_val = st.number_input("Aspartate Aminotransferase",min_value=0,   max_value=5000, value=40,  key="l_as")
-        l_tp     = st.number_input("Total Proteins",            min_value=0.0, max_value=10.0, value=6.5,
-                                    step=0.1,                                                   key="l_tp")
-        l_alb    = st.number_input("Albumin",                   min_value=0.0, max_value=6.0,  value=3.5,
-                                    step=0.1,                                                   key="l_alb")
-        l_agr    = st.number_input("Albumin/Globulin Ratio",    min_value=0.0, max_value=3.0,  value=1.0,
-                                    step=0.1,                                                   key="l_agr")
+    st.caption("Feature order: age, gender(1=Male/0=Female), Total_Bilirubin, Direct_Bilirubin, Alkaline_Phosphotase, Alamine_Aminotransferase, Aspartate_Aminotransferase, Total_Proteins, Albumin, Albumin_Globulin_Ratio")
+    st.caption("Example: 45,1,1.3,0.5,200,35,40,6.5,3.1,1.1")
 
-    if st.button("Predict Liver Disease Risk", use_container_width=True):
-        values = [l_age, l_gender, l_tb, l_db, l_ap,
-                  l_aa, l_as_val, l_tp, l_alb, l_agr]
-        arr    = np.array(values, dtype=float).reshape(1, -1)
-        prob   = liver_model.predict_proba(liver_scaler.transform(arr))[0][1]
-        result = "Likely" if prob >= LIVER_THRESHOLD else "Unlikely"
-        st.divider()
-        if result == "Likely":
-            st.error(f"Liver Disease Risk: {result}")
-            show_doctor_recommendations(
-                ["Liver Disease"], doctor_df_clean, hospital_df_clean)
+    liver_input = st.text_input(
+        "Enter values (comma separated)",
+        placeholder="45,1,1.3,0.5,200,35,40,6.5,3.1,1.1",
+        key="liver_text"
+    )
+
+    if st.button("Predict Liver Disease Risk", use_container_width=True, key="liver_btn"):
+        if not liver_input.strip():
+            st.warning("Please enter values before predicting.")
         else:
-            st.success(f"Liver Disease Risk: {result}")
-        st.metric("Model Confidence", f"{prob:.0%}")
-        st.progress(float(prob))
+            try:
+                values = [float(x.strip()) for x in liver_input.split(",")]
+                if len(values) != 10:
+                    st.error(f"Expected 10 values but got {len(values)}. Please check your input.")
+                else:
+                    arr    = np.array(values, dtype=float).reshape(1, -1)
+                    prob   = liver_model.predict_proba(liver_scaler.transform(arr))[0][1]
+                    result = "Likely" if prob >= LIVER_THRESHOLD else "Unlikely"
+                    st.divider()
+                    if result == "Likely":
+                        st.error(f"Liver Disease Risk: {result}")
+                        show_doctor_recommendations(
+                            ["Liver Disease"], doctor_df_clean, hospital_df_clean)
+                    else:
+                        st.success(f"Liver Disease Risk: {result}")
+                    st.metric("Model Confidence", f"{prob:.0%}")
+                    st.progress(float(prob))
+            except ValueError:
+                st.error("Invalid input. Please enter numbers only, separated by commas.")
 
+# ── Diabetes Tab ──────────────────────────────────────────────────────────────
 with tab3:
     st.subheader("Diabetes Risk Assessment")
-    col1, col2 = st.columns(2)
-    with col1:
-        d_preg    = st.number_input("Pregnancies",       min_value=0,   max_value=20,   value=1,   key="d_preg")
-        d_glucose = st.number_input("Glucose",           min_value=0,   max_value=300,  value=100, key="d_gluc")
-        d_bp      = st.number_input("Blood Pressure",    min_value=0,   max_value=150,  value=70,  key="d_bp")
-        d_skin    = st.number_input("Skin Thickness",    min_value=0,   max_value=100,  value=20,  key="d_skin")
-    with col2:
-        d_insulin = st.number_input("Insulin",           min_value=0,   max_value=900,  value=80,  key="d_ins")
-        d_bmi     = st.number_input("BMI",               min_value=0.0, max_value=70.0, value=25.0,
-                                     step=0.1,                                                      key="d_bmi")
-        d_dpf     = st.number_input("Diabetes Pedigree", min_value=0.0, max_value=3.0,  value=0.5,
-                                     step=0.01,                                                     key="d_dpf")
-        d_age     = st.number_input("Age",               min_value=1,   max_value=120,  value=30,  key="d_age")
+    st.caption("Feature order: Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age")
+    st.caption("Example: 2,120,70,30,100,25.5,0.35,29")
 
-    if st.button("Predict Diabetes Risk", use_container_width=True):
-        values = [d_preg, d_glucose, d_bp, d_skin,
-                  d_insulin, d_bmi, d_dpf, d_age]
-        arr    = np.array(values, dtype=float).reshape(1, -1)
-        prob   = diabetes_model.predict_proba(diabetes_scaler.transform(arr))[0][1]
-        result = "Likely" if prob >= DIABETES_THRESHOLD else "Unlikely"
-        st.divider()
-        if result == "Likely":
-            st.error(f"Diabetes Risk: {result}")
-            show_doctor_recommendations(
-                ["Diabetes"], doctor_df_clean, hospital_df_clean)
+    diabetes_input = st.text_input(
+        "Enter values (comma separated)",
+        placeholder="2,120,70,30,100,25.5,0.35,29",
+        key="diabetes_text"
+    )
+
+    if st.button("Predict Diabetes Risk", use_container_width=True, key="diabetes_btn"):
+        if not diabetes_input.strip():
+            st.warning("Please enter values before predicting.")
         else:
-            st.success(f"Diabetes Risk: {result}")
-        st.metric("Model Confidence", f"{prob:.0%}")
-        st.progress(float(prob))
+            try:
+                values = [float(x.strip()) for x in diabetes_input.split(",")]
+                if len(values) != 8:
+                    st.error(f"Expected 8 values but got {len(values)}. Please check your input.")
+                else:
+                    arr    = np.array(values, dtype=float).reshape(1, -1)
+                    prob   = diabetes_model.predict_proba(diabetes_scaler.transform(arr))[0][1]
+                    result = "Likely" if prob >= DIABETES_THRESHOLD else "Unlikely"
+                    st.divider()
+                    if result == "Likely":
+                        st.error(f"Diabetes Risk: {result}")
+                        show_doctor_recommendations(
+                            ["Diabetes"], doctor_df_clean, hospital_df_clean)
+                    else:
+                        st.success(f"Diabetes Risk: {result}")
+                    st.metric("Model Confidence", f"{prob:.0%}")
+                    st.progress(float(prob))
+            except ValueError:
+                st.error("Invalid input. Please enter numbers only, separated by commas.")
 
 st.divider()
 st.caption("This tool is for educational purposes only and is not a substitute for professional medical advice.")
