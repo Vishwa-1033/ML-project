@@ -82,22 +82,18 @@ def normalize_doctor_df(df):
                      "City", "Consult Fee", "Years of Experience"]:
         if expected not in df.columns:
             df[expected] = pd.NA
-    df["Consult Fee"] = (
-        df["Consult Fee"].astype(str)
-        .apply(lambda v: re.sub(r"[^\d\.]", "", v) if pd.notna(v) else "")
-    )
-    df["Consult Fee"] = pd.to_numeric(
-        df["Consult Fee"].replace("", np.nan), errors="coerce"
+        df["Consult Fee"] = pd.to_numeric(
+        df["Consult Fee"].astype(str).str.replace(r"[^\d\.]", "", regex=True).replace("", np.nan),
+        errors="coerce",
     ).fillna(0.0)
-    df["Years of Experience"] = (
-        df["Years of Experience"].astype(str)
-        .apply(lambda v: re.findall(r"\d+", v)[0] if re.findall(r"\d+", v) else "")
-    )
+
     df["Years of Experience"] = pd.to_numeric(
-        df["Years of Experience"].replace("", np.nan), errors="coerce"
+        df["Years of Experience"].astype(str).str.extract(r"(\d+)")[0],
+        errors="coerce",
     ).fillna(0.0)
+
     df["Speciality_clean"] = (
-        df["Speciality"].astype(str)
+        df["Speciality"].fillna("").astype(str)
         .str.lower()
         .str.replace(r"[^a-z, ]", "", regex=True)
         .str.strip()
